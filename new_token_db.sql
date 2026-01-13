@@ -13,9 +13,8 @@ CREATE TABLE super_admins (
     password_hash TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT now()
 );
-
 -- ==============================
--- COMPANIES (TENANTS)
+-- COMPANIES
 -- ==============================
 CREATE TABLE companies (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
