@@ -21,11 +21,17 @@ CREATE TABLE super_admins (
 -- ==============================
 CREATE TABLE plans (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
     name TEXT NOT NULL UNIQUE,              -- Free, Starter, Pro, Enterprise
     description TEXT,
 
-    monthly_token_limit BIGINT NOT NULL,    -- e.g. 100k, 1M, 10M
-    price_monthly NUMERIC(10,2) NOT NULL,   -- billing amount
+    token_limit BIGINT NOT NULL,             -- total tokens for the plan duration
+    price NUMERIC(10,2) NOT NULL,             -- price for the duration
+
+    duration_value INT NOT NULL,              -- e.g. 2, 6, 12
+    duration_unit TEXT NOT NULL CHECK (
+        duration_unit IN ('month', 'year')
+    ),                                       -- month or year
 
     max_agents INT DEFAULT 1,
     human_handover BOOLEAN DEFAULT FALSE,
@@ -34,6 +40,7 @@ CREATE TABLE plans (
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT now()
 );
+
 
 -- ==============================
 -- COMPANIES (TENANTS)

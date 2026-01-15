@@ -1,16 +1,17 @@
 from Database_function.connect_db import get_conn
-import secrets
 
 def get_all_plans():
     """
     Retrieve all plans from the database.
-    Returns a list of tuples containing plan details.
     """
     conn = get_conn()
     cur = conn.cursor()
     query = """
-    SELECT id, name, description, monthly_token_limit, price_monthly,
-           max_agents, human_handover, knowledge_base, is_active
+    SELECT id, name, description,
+           token_limit, price,
+           duration_value, duration_unit,
+           max_agents, human_handover, knowledge_base,
+           is_active, created_at
     FROM plans;
     """
     cur.execute(query)
@@ -20,23 +21,39 @@ def get_all_plans():
     return plans
 
 
-def create_plan(name, description, monthly_token_limit, price_monthly,
-                max_agents=1, human_handover=False, knowledge_base=True):
+def create_plan(
+    name,
+    description,
+    token_limit,
+    price,
+    duration_value,
+    duration_unit,   # 'month' or 'year'
+    max_agents=1,
+    human_handover=False,
+    knowledge_base=True
+):
     """
     Create a new plan.
-    Returns the new plan id on success, None on failure (e.g., duplicate name).
     """
     conn = get_conn()
     cur = conn.cursor()
     try:
         query = """
-        INSERT INTO plans (name, description, monthly_token_limit, price_monthly,
-                           max_agents, human_handover, knowledge_base)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO plans (
+            name, description,
+            token_limit, price,
+            duration_value, duration_unit,
+            max_agents, human_handover, knowledge_base
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         RETURNING id;
         """
-        cur.execute(query, (name, description, monthly_token_limit, price_monthly,
-                            max_agents, human_handover, knowledge_base))
+        cur.execute(query, (
+            name, description,
+            token_limit, price,
+            duration_value, duration_unit,
+            max_agents, human_handover, knowledge_base
+        ))
         plan_id = cur.fetchone()[0]
         conn.commit()
         return plan_id
@@ -51,15 +68,18 @@ def create_plan(name, description, monthly_token_limit, price_monthly,
 
 def get_plan_details(plan_id):
     """
-    Retrieve details of a specific plan by id.
-    Returns a tuple with plan details or None if not found.
+    Retrieve details of a specific plan.
     """
     conn = get_conn()
     cur = conn.cursor()
     query = """
-    SELECT id, name, description, monthly_token_limit, price_monthly,
-           max_agents, human_handover, knowledge_base, is_active, created_at
-    FROM plans WHERE id = %s;
+    SELECT id, name, description,
+           token_limit, price,
+           duration_value, duration_unit,
+           max_agents, human_handover, knowledge_base,
+           is_active, created_at
+    FROM plans
+    WHERE id = %s;
     """
     cur.execute(query, (plan_id,))
     plan = cur.fetchone()
@@ -70,13 +90,21 @@ def get_plan_details(plan_id):
 
 def update_plan(plan_id, **kwargs):
     """
-    Update a plan's details. Accepts keyword arguments for fields to update.
-    Valid fields: name, description, monthly_token_limit, price_monthly,
-                  max_agents, human_handover, knowledge_base, is_active.
-    Returns True on success, False on failure.
+    Update plan details.
     """
-    allowed_fields = {'name', 'description', 'monthly_token_limit', 'price_monthly',
-                      'max_agents', 'human_handover', 'knowledge_base', 'is_active'}
+    allowed_fields = {
+        'name',
+        'description',
+        'token_limit',
+        'price',
+        'duration_value',
+        'duration_unit',
+        'max_agents',
+        'human_handover',
+        'knowledge_base',
+        'is_active'
+    }
+
     updates = {k: v for k, v in kwargs.items() if k in allowed_fields}
     if not updates:
         return False
@@ -101,20 +129,18 @@ def update_plan(plan_id, **kwargs):
 
 def delete_plan(plan_id):
     """
-    Delete a plan by id, only if no company is using it.
-    Returns True on success, False if in use or not found.
+    Delete a plan only if no company is using it.
     """
     conn = get_conn()
     cur = conn.cursor()
     try:
-        # Check if any company uses this plan
         check_query = "SELECT COUNT(*) FROM companies WHERE plan_id = %s;"
         cur.execute(check_query, (plan_id,))
         count = cur.fetchone()[0]
-        if count > 0:
-            return False  # Cannot delete, plan in use
 
-        # Delete the plan
+        if count > 0:
+            return False
+
         delete_query = "DELETE FROM plans WHERE id = %s;"
         cur.execute(delete_query, (plan_id,))
         conn.commit()
@@ -127,63 +153,6 @@ def delete_plan(plan_id):
         cur.close()
         conn.close()
 
-
-
+# Database_function.Super_admin.plan
 if __name__ == "__main__":
-    # create_plan("paid", "description", 100000, 100,
-    #             max_agents=5, human_handover=True, knowledge_base=True)
     print(get_all_plans())
-    # print(get_plan_details('e8abb25e-098a-46b1-97ed-ecd46e687c47'))
-    # update_plan('e8abb25e-098a-46b1-97ed-ecd46e687c47', name="paid", price_monthly=1000)
-    # print(get_plan_details('29d05dd2-a58d-4f5d-9cdd-8fc676978c68'))
-    # print(delete_plan("15f389ae-373d-4799-b246-a89e6c8cbae5"))
-    
-
-
-    # print(delete_plan('15f389ae-373d-4799-b246-a89e6c8cbae5'))
-    # print(get_all_plans())
-
-    # create_plan(
-    # name="Free",
-    # description="Basic chatbot for small websites and testing",
-    # monthly_token_limit=100_000,
-    # price_monthly=0.00,
-    # max_agents=1,
-    # human_handover=False,
-    # knowledge_base=True
-    # )
-
-    # create_plan(
-    # name="Starter",
-    # description="For small businesses with basic customer support",
-    # monthly_token_limit=500_000,
-    # price_monthly=29.00,
-    # max_agents=3,
-    # human_handover=True,
-    # knowledge_base=True
-    # )
-
-    # create_plan(
-    # name="Pro",
-    # description="Advanced chatbot with human takeover and higher limits",
-    # monthly_token_limit=2_000_000,
-    # price_monthly=99.00,
-    # max_agents=10,
-    # human_handover=True,
-    # knowledge_base=True
-    # )
-
-    # create_plan(
-    # name="Enterprise",
-    # description="Custom solution for enterprises with high traffic",
-    # monthly_token_limit=10_000_000,
-    # price_monthly=499.00,
-    # max_agents=50,
-    # human_handover=True,
-    # knowledge_base=True
-    # )
-    print()
-
-
-
-    # Database_function.Super_admin.plan
