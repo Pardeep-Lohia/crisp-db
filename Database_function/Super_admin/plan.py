@@ -1,18 +1,23 @@
 from Database_function.connect_db import get_conn
 
+
+# =========================================================
+# GET ALL PLANS
+# =========================================================
 def get_all_plans():
     """
-    Retrieve all plans from the database.
+    Retrieve all plans.
     """
     conn = get_conn()
     cur = conn.cursor()
     query = """
-    SELECT id, name, description,
-           token_limit, price,
-           duration_value, duration_unit,
-           max_agents, human_handover, knowledge_base,
-           is_active, created_at
-    FROM plans;
+        SELECT id, name, description,
+               token_limit, price,
+               duration_value, duration_unit,
+               max_agents, human_handover, knowledge_base,
+               is_active, created_at
+        FROM plans
+        ORDER BY created_at DESC;
     """
     cur.execute(query)
     plans = cur.fetchall()
@@ -21,13 +26,16 @@ def get_all_plans():
     return plans
 
 
+# =========================================================
+# CREATE PLAN (SUPER ADMIN ONLY)
+# =========================================================
 def create_plan(
     name,
     description,
     token_limit,
     price,
     duration_value,
-    duration_unit,   # 'month' or 'year'
+    duration_unit,   # 'month' | 'year'
     max_agents=1,
     human_handover=False,
     knowledge_base=True
@@ -39,14 +47,14 @@ def create_plan(
     cur = conn.cursor()
     try:
         query = """
-        INSERT INTO plans (
-            name, description,
-            token_limit, price,
-            duration_value, duration_unit,
-            max_agents, human_handover, knowledge_base
-        )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-        RETURNING id;
+            INSERT INTO plans (
+                name, description,
+                token_limit, price,
+                duration_value, duration_unit,
+                max_agents, human_handover, knowledge_base
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id;
         """
         cur.execute(query, (
             name, description,
@@ -59,13 +67,15 @@ def create_plan(
         return plan_id
     except Exception as e:
         conn.rollback()
-        print(f"Error creating plan: {e}")
-        return None
+        raise RuntimeError(f"Error creating plan: {e}")
     finally:
         cur.close()
         conn.close()
 
 
+# =========================================================
+# GET PLAN DETAILS
+# =========================================================
 def get_plan_details(plan_id):
     """
     Retrieve details of a specific plan.
@@ -73,13 +83,13 @@ def get_plan_details(plan_id):
     conn = get_conn()
     cur = conn.cursor()
     query = """
-    SELECT id, name, description,
-           token_limit, price,
-           duration_value, duration_unit,
-           max_agents, human_handover, knowledge_base,
-           is_active, created_at
-    FROM plans
-    WHERE id = %s;
+        SELECT id, name, description,
+               token_limit, price,
+               duration_value, duration_unit,
+               max_agents, human_handover, knowledge_base,
+               is_active, created_at
+        FROM plans
+        WHERE id = %s;
     """
     cur.execute(query, (plan_id,))
     plan = cur.fetchone()
@@ -88,6 +98,9 @@ def get_plan_details(plan_id):
     return plan
 
 
+# =========================================================
+# UPDATE PLAN
+# =========================================================
 def update_plan(plan_id, **kwargs):
     """
     Update plan details.
@@ -112,47 +125,81 @@ def update_plan(plan_id, **kwargs):
     conn = get_conn()
     cur = conn.cursor()
     try:
-        set_clause = ', '.join(f"{k} = %s" for k in updates.keys())
+        set_clause = ', '.join(f"{k} = %s" for k in updates)
         values = list(updates.values()) + [plan_id]
-        query = f"UPDATE plans SET {set_clause} WHERE id = %s;"
+
+        query = f"""
+            UPDATE plans
+            SET {set_clause}
+            WHERE id = %s;
+        """
         cur.execute(query, values)
         conn.commit()
         return cur.rowcount > 0
     except Exception as e:
         conn.rollback()
-        print(f"Error updating plan: {e}")
-        return False
+        raise RuntimeError(f"Error updating plan: {e}")
     finally:
         cur.close()
         conn.close()
 
 
+# =========================================================
+# DELETE PLAN (SAFE DELETE)
+# =========================================================
 def delete_plan(plan_id):
     """
-    Delete a plan only if no company is using it.
+    Delete a plan ONLY if it was never used.
+    Otherwise, soft-delete (is_active = false).
     """
     conn = get_conn()
     cur = conn.cursor()
     try:
-        check_query = "SELECT COUNT(*) FROM companies WHERE plan_id = %s;"
-        cur.execute(check_query, (plan_id,))
-        count = cur.fetchone()[0]
+        # Check usage in company_plans
+        usage_query = """
+            SELECT COUNT(*)
+            FROM company_plans
+            WHERE plan_id = %s;
+        """
+        cur.execute(usage_query, (plan_id,))
+        usage_count = cur.fetchone()[0]
 
-        if count > 0:
-            return False
+        if usage_count > 0:
+            # Soft delete
+            cur.execute(
+                "UPDATE plans SET is_active = false WHERE id = %s;",
+                (plan_id,)
+            )
+            conn.commit()
+            return "SOFT_DELETED"
 
-        delete_query = "DELETE FROM plans WHERE id = %s;"
-        cur.execute(delete_query, (plan_id,))
+        # Hard delete if never used
+        cur.execute("DELETE FROM plans WHERE id = %s;", (plan_id,))
         conn.commit()
         return cur.rowcount > 0
     except Exception as e:
         conn.rollback()
-        print(f"Error deleting plan: {e}")
-        return False
+        raise RuntimeError(f"Error deleting plan: {e}")
     finally:
         cur.close()
         conn.close()
 
-# Database_function.Super_admin.plan
+
+# =========================================================
+# DEBUG
+# =========================================================
 if __name__ == "__main__":
-    print(get_all_plans())
+
+    # create_plan(
+    #     name="Free",
+    #     description="limited scale with premium support",
+    #     token_limit=1000,
+    #     price=0,  # custom pricing
+    #     duration_value=1,
+    #     duration_unit="month",
+    #     max_agents=1,
+    #     human_handover=True,
+    #     knowledge_base=True
+    # )
+    # delete_plan("610b3f58-d441-4c1e-8da5-ac28c451b08f")
+    pass

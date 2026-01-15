@@ -1,39 +1,129 @@
-# some other file at project root
 from Database_function.connect_db import get_conn
 import secrets
-from uuid import UUID
 import bcrypt
-# Create the Company
-def create_company(name, domain, plan_id,username,email,password):
+from uuid import UUID
+from datetime import datetime, timezone
+from dateutil.relativedelta import relativedelta
+
+
+# =========================================================
+# INTERNAL: CALCULATE END DATE
+# =========================================================
+def _calculate_end_date(start_date, duration_value, duration_unit):
+    if duration_unit == "month":
+        return start_date + relativedelta(months=duration_value)
+    elif duration_unit == "year":
+        return start_date + relativedelta(years=duration_value)
+    else:
+        raise ValueError("duration_unit must be 'month' or 'year'")
+
+# =========================================================
+# CREATE COMPANY (SUPER ADMIN ONLY)
+# =========================================================
+def create_company(name, domain, plan_id, username, email, password):
+    """
+    Atomically creates:
+    - company
+    - company admin
+    - company plan
+    - API key
+    """
     conn = get_conn()
-    cur=conn.cursor()
+    cur = conn.cursor()
+
     try:
+        # 1️⃣ Create company
         cur.execute(
             """
-            INSERT INTO companies (name, domain, plan_id)
-            VALUES (%s, %s, %s)
-            RETURNING id, name, status, plan_id;
+            INSERT INTO companies (name, domain)
+            VALUES (%s, %s)
+            RETURNING id, status;
             """,
-            (name, domain, plan_id)
+            (name, domain)
         )
-        result = cur.fetchone()
+        company_id, status = cur.fetchone()
+
+        # 2️⃣ Fetch plan details (ONLY active plans)
+        cur.execute(
+            """
+            SELECT token_limit, duration_value, duration_unit
+            FROM plans
+            WHERE id = %s AND is_active = true;
+            """,
+            (plan_id,)
+        )
+        plan = cur.fetchone()
+        if not plan:
+            raise ValueError("Invalid or inactive plan")
+
+        token_limit, duration_value, duration_unit = plan
+
+        # 3️⃣ Calculate dates (UTC SAFE)
+        start_date = datetime.now(timezone.utc)
+        end_date = _calculate_end_date(start_date, duration_value, duration_unit)
+
+        # 4️⃣ Assign plan
+        cur.execute(
+            """
+            INSERT INTO company_plans (
+                company_id,
+                plan_id,
+                start_date,
+                end_date,
+                token_limit
+            )
+            VALUES (%s, %s, %s, %s, %s);
+            """,
+            (company_id, plan_id, start_date, end_date, token_limit)
+        )
+
+        # 5️⃣ Create admin user
+        hashed_password = bcrypt.hashpw(
+            password.encode("utf-8"),
+            bcrypt.gensalt()
+        ).decode("utf-8")
+
+        cur.execute(
+            """
+            INSERT INTO company_users (
+                company_id, username, email, password_hash, role
+            )
+            VALUES (%s, %s, %s, %s, 'admin');
+            """,
+            (company_id, username, email, hashed_password)
+        )
+
+        # 6️⃣ Create API key
+        api_key = "skv-to-" + secrets.token_hex(32)
+        cur.execute(
+            """
+            INSERT INTO company_api_keys (company_id, api_key)
+            VALUES (%s, %s);
+            """,
+            (company_id, api_key)
+        )
+
+        # ✅ SINGLE COMMIT
         conn.commit()
-        create_company_user(result[0],username,email,password,"admin")
-        conn.commit()
-        create_company_api_key(result[0])
-        conn.commit()
-        return result
+
+        return {
+            "company_id": company_id,
+            "status": status,
+            "api_key": api_key,
+            "plan_expires_at": end_date
+        }
 
     except Exception as e:
         conn.rollback()
-        raise e
+        raise RuntimeError(f"Create company failed: {e}")
 
     finally:
-        conn.close()
         cur.close()
+        conn.close()
 
-
-# view All companies
+# =========================================================
+# VIEW ALL COMPANIES
+# =========================================================
 def view_all_company():
     conn = get_conn()
     cur = conn.cursor()
@@ -41,198 +131,267 @@ def view_all_company():
         cur.execute(
             """
             SELECT
-                id,
-                name,
-                domain,
-                status,
-                total_tokens_used,
-                plan_id,
-                created_at
-            FROM companies
-            ORDER BY created_at DESC;
+                c.id,
+                c.name,
+                c.domain,
+                c.status,
+                cp.plan_id,
+                cp.status AS plan_status,
+                cp.end_date,
+                c.created_at
+            FROM companies c
+            LEFT JOIN company_plans cp
+                ON c.id = cp.company_id
+               AND cp.status = 'active'
+            ORDER BY c.created_at DESC;
             """
         )
         return cur.fetchall()
-
-    except Exception as e:
-        conn.rollback()
-        raise e
-
     finally:
         cur.close()
         conn.close()
 
-# update companies detail
+# =========================================================
+# UPDATE COMPANY INFO
+# =========================================================
 def update_company_info(company_id, **kwargs):
-    if not kwargs:
-        raise ValueError("No fields provided to update")
+    allowed_fields = {"name", "domain", "status"}
+    updates = {k: v for k, v in kwargs.items() if k in allowed_fields}
+
+    if not updates:
+        raise ValueError("No valid fields to update")
 
     conn = get_conn()
     cur = conn.cursor()
-
     try:
-        # Build dynamic SET clause
-        fields = []
-        values = []
+        set_clause = ", ".join(f"{k} = %s" for k in updates)
+        values = list(updates.values()) + [company_id]
 
-        for key, value in kwargs.items():
-            fields.append(f"{key} = %s")
-            values.append(value)
-
-        values.append(company_id)
-
-        query = f"""
+        cur.execute(
+            f"""
             UPDATE companies
-            SET {', '.join(fields)}
+            SET {set_clause}
             WHERE id = %s
-            RETURNING id, name, domain, status, plan_id;
-        """
-
-        cur.execute(query, tuple(values))
-        result = cur.fetchone()
+            RETURNING id, name, domain, status;
+            """,
+            values
+        )
         conn.commit()
-        return result
-
+        return cur.fetchone()
     except Exception as e:
         conn.rollback()
-        raise e
-
+        raise RuntimeError(f"Update failed: {e}")
     finally:
         cur.close()
         conn.close()
 
-# deactivate company
-def deactive_company(company_id):
+# =========================================================
+# ACTIVATE / DEACTIVATE / DELETE
+# =========================================================
+def _set_company_status(company_id, status):
     conn = get_conn()
     cur = conn.cursor()
     try:
         cur.execute(
             """
             UPDATE companies
-            SET status = 'inactive'
+            SET status = %s
             WHERE id = %s
             RETURNING id, name, status;
             """,
-            (company_id,)
+            (status, company_id)
         )
-
-        result = cur.fetchone()
         conn.commit()
-        return result
-
-    except Exception as e:
-        conn.rollback()
-        raise e
-
+        return cur.fetchone()
     finally:
         cur.close()
         conn.close()
 
-# delete company  
+def deactivate_company(company_id):
+    return _set_company_status(company_id, "inactive")
+
+def activate_company(company_id):
+    return _set_company_status(company_id, "active")
+
 def delete_company(company_id):
+    return _set_company_status(company_id, "blocked")
+
+
+# =========================================================
+# CHANGE COMPANY PLANS
+# =========================================================
+def change_company_plan(company_id, new_plan_id):
+    """
+    Upgrade / downgrade company plan.
+    Automatically expires current plan and assigns new one.
+    """
     conn = get_conn()
     cur = conn.cursor()
+
     try:
+        # 1️⃣ Get active plan
         cur.execute(
             """
-            DELETE FROM companies
-            WHERE id = %s
-            RETURNING id, name;
+            SELECT id
+            FROM company_plans
+            WHERE company_id = %s AND status = 'active';
             """,
             (company_id,)
         )
+        active_plan = cur.fetchone()
+        if not active_plan:
+            raise ValueError("Company has no active plan")
 
-        deleted = cur.fetchone()
-        conn.commit()
+        active_company_plan_id = active_plan[0]
 
-        if deleted:
-            return {"message": "company has been deleted"}
-        else:
-            return {"message": "not deleted"}
-        
-    except Exception as e:
-        conn.rollback()
-        raise e
-
-    finally:
-        cur.close()
-        conn.close()
-
-# make api_key
-def create_company_api_key(company_id):
-    api_key = "skv-to-"+secrets.token_hex(32)
-
-    conn = get_conn()
-    cur = conn.cursor()
-    try:
+        # 2️⃣ Expire current plan
         cur.execute(
             """
-            INSERT INTO company_api_keys (company_id, api_key)
-            VALUES (%s, %s)
-            RETURNING api_key;
+            UPDATE company_plans
+            SET status = 'expired',
+                end_date = now()
+            WHERE id = %s;
             """,
-            (company_id, api_key)
+            (active_company_plan_id,)
         )
 
-        result = cur.fetchone()
-        conn.commit()
-        return result[0]
-
-    except Exception as e:
-        conn.rollback()
-        raise e
-
-    finally:
-        cur.close()
-        conn.close()
-
-# create company user
-def create_company_user(company_id: UUID,username:str, email: str, password: str, role: str):
-    # hash password
-    hashed_password = bcrypt.hashpw(
-        password.encode("utf-8"),
-        bcrypt.gensalt()
-    ).decode("utf-8")
-
-    conn = get_conn()
-    cur = conn.cursor()
-    try:
+        # 3️⃣ Fetch new plan details
         cur.execute(
             """
-            INSERT INTO company_users (
+            SELECT token_limit, duration_value, duration_unit
+            FROM plans
+            WHERE id = %s AND is_active = true;
+            """,
+            (new_plan_id,)
+        )
+        plan = cur.fetchone()
+        if not plan:
+            raise ValueError("Invalid or inactive new plan")
+
+        token_limit, duration_value, duration_unit = plan
+
+        start_date = datetime.now(timezone.utc)
+        end_date = _calculate_end_date(start_date, duration_value, duration_unit)
+
+        # 4️⃣ Assign new plan
+        cur.execute(
+            """
+            INSERT INTO company_plans (
                 company_id,
-                email,
-                password_hash,
-                role,
-                username
+                plan_id,
+                start_date,
+                end_date,
+                token_limit
             )
-            VALUES (%s, %s, %s, %s,%s)
-            RETURNING id, email, role,username;
+            VALUES (%s, %s, %s, %s, %s)
+            RETURNING id;
             """,
-            (company_id, email, hashed_password, role, username)
+            (company_id, new_plan_id, start_date, end_date, token_limit)
         )
 
-        result = cur.fetchone()
+        new_company_plan_id = cur.fetchone()[0]
+
         conn.commit()
-        return result
+
+        return {
+            "old_company_plan_id": active_company_plan_id,
+            "new_company_plan_id": new_company_plan_id,
+            "start_date": start_date,
+            "end_date": end_date
+        }
 
     except Exception as e:
         conn.rollback()
-        raise e
+        raise RuntimeError(f"Change plan failed: {e}")
 
     finally:
         cur.close()
         conn.close()
-    
-if __name__=="__main__":
-    # create_company('abc','IT','f272b9a1-8064-42a3-a0c9-d49e27452368','ABC','testemail@gmail.com','testpassword')
-    # print(update_company_info("fe39e6b7-0e76-4dc7-ac26-2fd3e6944e22",status='inactive'))
-    # print(delete_company("fe39e6b7-0e76-4dc7-ac26-2fd3e6944e22"))
-    # print()
-    # print(view_all_company())
-    # delete_company('35fa6e25-3caa-4f98-acf1-5035e8d61321')
-    # Database_function.Super_admin.company
 
-    create_company('Microsoft','IT','f272b9a1-8064-42a3-a0c9-d49e27452368','Ashutosh','microsoft123@gmail.com','Ashu123')
+# =========================================================
+# RENEW COMPANY PLANS
+# =========================================================
+def renew_company_plan(company_id, plan_id):
+    """
+    Renew a plan for a company AFTER expiry.
+    Company must NOT have an active plan.
+    """
+    conn = get_conn()
+    cur = conn.cursor()
 
-    
+    try:
+        # 1️⃣ Ensure NO active plan exists
+        cur.execute(
+            """
+            SELECT 1
+            FROM company_plans
+            WHERE company_id = %s AND status = 'active';
+            """,
+            (company_id,)
+        )
+        if cur.fetchone():
+            raise ValueError(
+                "Company already has an active plan. Use change_company_plan()."
+            )
+
+        # 2️⃣ Fetch plan details
+        cur.execute(
+            """
+            SELECT token_limit, duration_value, duration_unit
+            FROM plans
+            WHERE id = %s AND is_active = true;
+            """,
+            (plan_id,)
+        )
+        plan = cur.fetchone()
+        if not plan:
+            raise ValueError("Invalid or inactive plan")
+
+        token_limit, duration_value, duration_unit = plan
+
+        # 3️⃣ Calculate new dates (UTC safe)
+        start_date = datetime.now(timezone.utc)
+        end_date = _calculate_end_date(start_date, duration_value, duration_unit)
+
+        # 4️⃣ Insert NEW subscription row
+        cur.execute(
+            """
+            INSERT INTO company_plans (
+                company_id,
+                plan_id,
+                start_date,
+                end_date,
+                token_limit,
+                tokens_used,
+                status
+            )
+            VALUES (%s, %s, %s, %s, %s, 0, 'active')
+            RETURNING id;
+            """,
+            (company_id, plan_id, start_date, end_date, token_limit)
+        )
+
+        company_plan_id = cur.fetchone()[0]
+        conn.commit()
+
+        return {
+            "company_plan_id": company_plan_id,
+            "start_date": start_date,
+            "end_date": end_date,
+            "message": "Plan renewed successfully"
+        }
+
+    except Exception as e:
+        conn.rollback()
+        raise RuntimeError(f"Renew plan failed: {e}")
+
+    finally:
+        cur.close()
+        conn.close()
+
+# =========================================================
+# DEBUG
+# =========================================================
+if __name__ == "__main__":
+    pass
+    renew_company_plan("7b73cbd7-e95d-4e35-bc46-855957069651","f800cec5-0bca-41d6-8d01-cce85c9d865a")
