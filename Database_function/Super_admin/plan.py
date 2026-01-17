@@ -126,6 +126,7 @@ def delete_plan(plan_id):
         cur.close()
         conn.close()
 
+
 if __name__ == "__main__":
     # create_plan("paid", "description", 100000, 100,
     #             max_agents=5, human_handover=True, knowledge_base=True)
