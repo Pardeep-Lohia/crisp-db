@@ -1,6 +1,6 @@
-# Backend API
+# Crisp-DB
 
-This is the backend API for the Zeon project, built with Node.js and Express. It provides endpoints for managing companies, plans, conversations, messages, knowledge bases, and related entities in a MongoDB database.
+Crisp-DB is a full-stack application consisting of a React frontend and a Node.js/Express backend. The backend provides a RESTful API for managing companies, plans, conversations, messages, knowledge bases, and related entities in a MongoDB database. The frontend offers a user interface for interacting with the API.
 
 ## Features
 
@@ -17,6 +17,8 @@ This is the backend API for the Zeon project, built with Node.js and Express. It
 - **File Uploads**: Support for image and file uploads via Multer and Cloudinary.
 
 ## Installation
+
+### Backend Setup
 
 1. Navigate to the backend directory:
 
@@ -45,6 +47,44 @@ This is the backend API for the Zeon project, built with Node.js and Express. It
    ```
 
 The server will run on the port specified in `.env` (default: 5000).
+
+### Frontend Setup
+
+1. Navigate to the Frontend directory:
+
+   ```
+   cd Frontend
+   ```
+
+2. Install dependencies:
+
+   ```
+   npm install
+   ```
+
+3. Start the development server:
+
+   ```
+   npm start
+   ```
+
+The frontend will run on [http://localhost:3000](http://localhost:3000).
+
+### Running the Full Application
+
+To run both backend and frontend simultaneously:
+
+1. Start the backend server in one terminal:
+
+   ```
+   cd backend && npm run dev
+   ```
+
+2. Start the frontend in another terminal:
+
+   ```
+   cd Frontend && npm start
+   ```
 
 ## Usage
 
@@ -134,6 +174,8 @@ backend/
 
 ## Dependencies
 
+### Backend Dependencies
+
 - `express`: Web framework for Node.js
 - `mongoose`: MongoDB object modeling
 - `mongoose-aggregate-paginate-v2`: Pagination plugin for Mongoose
@@ -150,6 +192,21 @@ backend/
 - `crypto`: Cryptographic functions
 - `nodemon`: Development server (dev dependency)
 - `prettier`: Code formatter (dev dependency)
+
+### Frontend Dependencies
+
+- `react`: Frontend library
+- `react-dom`: React DOM rendering
+- `react-router-dom`: Routing for React
+- `redux`: State management
+- `@reduxjs/toolkit`: Redux toolkit for efficient Redux development
+- `axios`: HTTP client for API calls
+- `bootstrap`: CSS framework
+- `react-bootstrap`: Bootstrap components for React
+- `react-icons`: Icon library
+- `gsap`: Animation library
+- `react-scripts`: Build scripts for React
+- `web-vitals`: Performance monitoring
 
 ## Contributing
 
