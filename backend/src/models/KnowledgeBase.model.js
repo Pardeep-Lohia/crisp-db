@@ -8,22 +8,9 @@ const knowledgeDocSchema = new mongoose.Schema(
       index: true,
     },
 
-    title: String,
-
-    source_type: {
-      type: String,
-      enum: ['pdf', 'url', 'text', 'faq'],
-    },
-
-    source_ref: String,
-
-    vector_ids: [String],
-
-    status: {
-      type: String,
-      enum: ['processing', 'ready', 'failed'],
-      default: 'processing',
-    },
+    question: { type: String, required: true },
+    answer: { type: String, required: true },
+    question_embedding: { type: [Number], required: true }
   },
   { timestamps: true }
 );
