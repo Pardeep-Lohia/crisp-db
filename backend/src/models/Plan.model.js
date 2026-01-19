@@ -1,24 +1,25 @@
 import mongoose from 'mongoose';
 
 // Plan Schema
-const planSchema = new mongoose.Schema({
+const planSchema = new mongoose.Schema(
+  {
+    name: { type: String, unique: true },
 
-  name: { type: String, unique: true },
+    description: String,
 
-  description: String,
+    price: { type: Number, min: 0 },
 
-  price: { type: Number, min: 0 },
+    billing_cycle: {
+      type: String,
+      enum: ['monthly', 'yearly'],
+      required: true,
+    },
 
-  billing_cycle: {
-    type: String,
-    enum: ['monthly', 'yearly'],
-    required: true
+    duration_days: Number,
+
+    is_active: { type: Boolean, default: true },
   },
-
-  duration_days: Number,
-
-  is_active: { type: Boolean, default: true }
-
-}, { timestamps: true });
+  { timestamps: true }
+);
 
 export const Plan = mongoose.model('Plan', planSchema);

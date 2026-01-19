@@ -1,19 +1,19 @@
 import mongoose from 'mongoose';
 
-const apiKeySchema = new mongoose.Schema({
+const apiKeySchema = new mongoose.Schema(
+  {
+    company_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Company',
+      required: true,
+    },
 
-  company_id: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Company',
-    required: true
+    api_key: { type: String, required: true, unique: true },
+
+    is_active: { type: Boolean, default: true },
   },
-
-  api_key: { type: String, required: true, unique: true },
-
-  is_active: { type: Boolean, default: true }
-
-}, { timestamps: true });
-
+  { timestamps: true }
+);
 
 apiKeySchema.index(
   { company_id: 1 },
