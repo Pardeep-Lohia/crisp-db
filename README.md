@@ -4,6 +4,8 @@ Crisp-DB is a full-stack application consisting of a React frontend and a Node.j
 
 ## Features
 
+### Backend Features
+
 - **Company Management**: Create, view, and update company information, including status management and API key generation.
 - **Plan Management**: Handle subscription plans with CRUD operations, including plan features.
 - **Conversation Handling**: Manage conversations, messages, and visitor interactions.
@@ -15,6 +17,15 @@ Crisp-DB is a full-stack application consisting of a React frontend and a Node.j
 - **Error Handling**: Global error handling for robust API responses.
 - **CORS Support**: Cross-origin resource sharing enabled.
 - **File Uploads**: Support for image and file uploads via Multer and Cloudinary.
+
+### Frontend Features
+
+- **User Dashboard**: Interactive dashboard for managing conversations and messages.
+- **Pricing Page**: Display subscription plans and features.
+- **Authentication**: Login and signup forms with Redux state management.
+- **Integration Showcase**: Pages for app integrations and mediator apps.
+- **Help Center**: FAQ and support articles.
+- **Responsive Design**: Bootstrap-based responsive UI with animations using GSAP.
 
 ## Installation
 
@@ -121,48 +132,93 @@ http://localhost:5000
 ## Project Structure
 
 ```
-backend/
-├── src/
-│   ├── config/            # Configuration files
-│   ├── constants/         # Application constants
-│   ├── controllers/       # Route controllers
-│   │   ├── company.controller.js
-│   │   ├── conversation.controller.js
-│   │   ├── knowledgeBase.controller.js
-│   │   ├── plan.controller.js
-│   │   └── superAdmin.controller.js
-│   ├── db/                # Database connection
-│   │   └── db.js
-│   ├── middlewares/       # Custom middlewares
-│   │   ├── auth.middleware.js
-│   │   ├── error.middleware.js
-│   │   └── rateLimiter.middleware.js
-│   ├── models/            # Mongoose models
-│   │   ├── ApiKey.model.js
-│   │   ├── Company.model.js
-│   │   ├── CompanyUser.model.js
-│   │   ├── Conversation.model.js
-│   │   ├── KnowledgeBase.model.js
-│   │   ├── Message.model.js
-│   │   ├── Plan.model.js
-│   │   ├── PlanFeature.model.js
-│   │   ├── TokenUsage.model.js
-│   │   └── Visitors.model.js
-│   ├── routes/            # API routes
-│   │   ├── company.route.js
-│   │   ├── conversation.route.js
-│   │   ├── plan.routes.js
-│   │   └── superadmin.route.js
-│   ├── app.js            # Express app setup
-│   └── index.js          # Main entry point
-├── public/               # Static files
-├── .env                  # Environment variables
-├── .gitignore
-├── .prettierignore
-├── .prettierrc
-├── package.json
-├── package-lock.json
-└── README.md             # This file
+crisp-db/
+├── backend/
+│   ├── src/
+│   │   ├── config/            # Configuration files
+│   │   ├── constants/         # Application constants
+│   │   ├── controllers/       # Route controllers
+│   │   │   ├── company.controller.js
+│   │   │   ├── conversation.controller.js
+│   │   │   ├── knowledgeBase.controller.js
+│   │   │   ├── plan.controller.js
+│   │   │   └── superAdmin.controller.js
+│   │   ├── db/                # Database connection
+│   │   │   └── db.js
+│   │   ├── middlewares/       # Custom middlewares
+│   │   │   ├── auth.middleware.js
+│   │   │   ├── error.middleware.js
+│   │   │   └── rateLimiter.middleware.js
+│   │   ├── models/            # Mongoose models
+│   │   │   ├── ApiKey.model.js
+│   │   │   ├── Company.model.js
+│   │   │   ├── CompanyUser.model.js
+│   │   │   ├── Conversation.model.js
+│   │   │   ├── KnowledgeBase.model.js
+│   │   │   ├── Message.model.js
+│   │   │   ├── Plan.model.js
+│   │   │   ├── PlanFeature.model.js
+│   │   │   ├── TokenUsage.model.js
+│   │   │   └── Visitors.model.js
+│   │   ├── routes/            # API routes
+│   │   │   ├── company.route.js
+│   │   │   ├── conversation.route.js
+│   │   │   ├── plan.routes.js
+│   │   │   └── superadmin.route.js
+│   │   ├── app.js            # Express app setup
+│   │   └── index.js          # Main entry point
+│   ├── public/               # Static files
+│   ├── .env                  # Environment variables
+│   ├── .gitignore
+│   ├── .prettierignore
+│   ├── .prettierrc
+│   ├── package.json
+│   ├── package-lock.json
+│   └── README.md             # Backend README
+├── Frontend/
+│   ├── public/
+│   │   ├── index.html        # Main HTML file
+│   │   ├── manifest.json     # PWA manifest
+│   │   ├── robots.txt        # SEO robots file
+│   ├── src/
+│   │   ├── assets/           # Static assets (images, icons)
+│   │   │   ├── app/          # App-related images
+│   │   │   ├── footer/       # Footer images
+│   │   │   ├── form/         # Form-related assets
+│   │   │   ├── furtherMenu/  # Menu assets
+│   │   │   ├── help/         # Help section images
+│   │   │   ├── home/         # Home page images
+│   │   │   ├── integration/  # Integration images
+│   │   │   ├── mediatorApps/ # Mediator app icons
+│   │   │   ├── pricing/      # Pricing page images
+│   │   │   └── widgets/      # Widget images
+│   │   ├── Components/       # React components
+│   │   │   ├── apps/         # App-related components
+│   │   │   ├── Dashboard/    # Dashboard components
+│   │   │   ├── footer/       # Footer component
+│   │   │   ├── furtherMenu/  # Additional menu components
+│   │   │   ├── head/         # Header components
+│   │   │   ├── help/         # Help center components
+│   │   │   ├── integration/  # Integration components
+│   │   │   ├── main-container/ # Main page components
+│   │   │   ├── Pricing/      # Pricing components
+│   │   │   └── signUp_Login/ # Authentication components
+│   │   ├── routing/          # Routing configuration
+│   │   │   └── routing.js    # App routes
+│   │   ├── store/            # Redux store
+│   │   │   ├── authSlice.js  # Authentication state
+│   │   │   ├── loginSlice.js # Login state
+│   │   │   └── store.js      # Store configuration
+│   │   ├── App.css           # Main app styles
+│   │   ├── App.js            # Main app component
+│   │   ├── index.css         # Global styles
+│   │   └── index.js          # App entry point
+│   ├── .gitignore
+│   ├── package.json
+│   ├── package-lock.json
+│   └── README.md             # Frontend README (Create React App default)
+├── images/                   # Shared images
+└── README.md                 # Main project README
 ```
 
 ## Environment Variables
