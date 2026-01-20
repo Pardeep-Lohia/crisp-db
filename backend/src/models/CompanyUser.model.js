@@ -30,15 +30,26 @@ const companyUserSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// 🔑 Multi-tenant uniqueness
 companyUserSchema.index({ company_id: 1, email: 1 }, { unique: true });
-companyUserSchema.index({ company_id: 1, username: 1 }, { unique: true });
 
+// 🔐 Only ONE super_admin per company
+companyUserSchema.index(
+  { company_id: 1, role: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { role: 'super_admin' },
+  }
+);
+
+// 🔒 Password hashing
 companyUserSchema.pre('save', async function (next) {
   if (!this.isModified('password_hash')) return next();
   this.password_hash = await bcrypt.hash(this.password_hash, 10);
   next();
 });
 
+// 🔐 Auth helpers
 companyUserSchema.methods.isPasswordCorrect = function (password) {
   return bcrypt.compare(password, this.password_hash);
 };
@@ -47,13 +58,13 @@ companyUserSchema.methods.generateAccessToken = function () {
   return jwt.sign(
     { _id: this._id, company_id: this.company_id, role: this.role },
     process.env.ACCESS_SECRET_KEY,
-    { expiresIn: process.env.ACCESS_SECRET_EXPIRY }
+    { expiresIn: process.env.ACCESS_TOKEN_EXPIRY }
   );
 };
 
 companyUserSchema.methods.generateRefreshToken = function () {
   return jwt.sign({ _id: this._id }, process.env.REFRESH_SECRET_KEY, {
-    expiresIn: process.env.REFRESH_SECRET_EXPIRY,
+    expiresIn: process.env.REFRESH_TOKEN_EXPIRY,
   });
 };
 

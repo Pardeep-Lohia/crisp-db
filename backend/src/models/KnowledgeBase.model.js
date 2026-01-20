@@ -10,7 +10,7 @@ const knowledgeDocSchema = new mongoose.Schema(
 
     question: { type: String, required: true },
     answer: { type: String, required: true },
-    question_embedding: { type: [Number], required: true }
+    question_embedding: { type: [Number], required: true },
   },
   { timestamps: true }
 );

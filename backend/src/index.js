@@ -1,27 +1,28 @@
 import dotenv from 'dotenv';
-
-// helper function...
-dotenv.config({
-  path: ['.env'],
-});
-
+dotenv.config(); // ✅ load env FIRST
 import connectDB from './db/db.js';
 import app from './app.js';
 
-// connect to DataBase
-connectDB()
-  // if database connected successfully...
-  // but could not start express app...
-  .then(() => {
+const startServer = async () => {
+  try {
+    // 1️⃣ Connect DB
+    await connectDB();
+    console.log('✅ Database connected');
+
+    // 3️⃣ Handle express errors
     app.on('error', (error) => {
       console.error('Error in Express app:', error.message);
       throw error;
     });
-    // if express app run in proper way...
+
+    // 4️⃣ Start server
     app.listen(process.env.PORT, () => {
-      console.log(`Server is running at :${process.env.PORT}`);
+      console.log(`🚀 Server running at :${process.env.PORT}`);
     });
-  })
-  .catch((err) => {
-    console.error('Failed to connect to the database:', err);
-  });
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
+  }
+};
+
+startServer();
