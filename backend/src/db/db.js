@@ -1,15 +1,26 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
+import { DB_NAME } from '../config/db.config.js';
+
+// connectionInstance (mongoose)
+//  ├── connection
+//  │    ├── host
+//  │    ├── port
+//  │    ├── name
+//  │    └── readyState
+//  ├── models
+//  ├── model()
+//  ├── disconnect()
 
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGO_URI);
-
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
+    const connectionInstance = await mongoose.connect(
+      `${process.env.MONGODB_URI}/${DB_NAME}`
+    );
+    console.log(`Connected to MongoDB ${connectionInstance.connection.host}`);
   } catch (error) {
-    console.error(`Error: ${error.message}`);
-    // Exit process with failure if DB connection fails
+    console.error('Error connecting to MongoDB:', error.message);
     process.exit(1);
   }
 };
 
-module.exports = connectDB;
+export default connectDB;
