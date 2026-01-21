@@ -1,10 +1,14 @@
 import express from 'express';
 import { login } from '../controllers/auth.controller.js';
 
-// get the authRouter
+/**
+ * Authentication Routes
+ */
 const authRouter = express.Router();
 
-// ✅ Login route
+/**
+ * Login
+ */
 authRouter.post('/login', login);
 
 export default authRouter;

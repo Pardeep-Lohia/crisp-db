@@ -1,14 +1,14 @@
 import { CompanyUser } from '../../models/CompanyUser.model.js';
-import {Company} from "../../models/Company.model.js"
+import { Company } from '../../models/Company.model.js';
 import AsyncHandler from '../../utils/AsyncHandler.util.js';
 import ApiError from '../../utils/ApiError.util.js';
 import ApiResponse from '../../utils/ApiResponse.util.js';
 
-
-// =========================
-// Create Compnay Signup Auto while creating the company
-// =========================
-export const create_company = AsyncHandler(async (req, res) => {
+/**
+ * Create Customer Company with Admin User
+ * Automatically creates a company and assigns a company admin
+ */
+export const createCompany = AsyncHandler(async (req, res) => {
   const {
     company_name,
     company_domain,
@@ -17,7 +17,7 @@ export const create_company = AsyncHandler(async (req, res) => {
     password,
   } = req.body;
 
-  // 1️⃣ Validate input
+  // Validate request payload
   if (
     !company_name ||
     !company_domain ||
@@ -25,51 +25,54 @@ export const create_company = AsyncHandler(async (req, res) => {
     !email ||
     !password
   ) {
-    throw new ApiError(400, "All fields are required");
+    throw new ApiError(400, 'All fields are required');
   }
 
-  // 2️⃣ Prevent system company creation
+  // Prevent system company domain usage
   const systemCompany = await Company.findOne({ is_system: true });
+
   if (systemCompany && company_domain === systemCompany.domain) {
-    throw new ApiError(400, "Invalid company domain");
+    throw new ApiError(400, 'Invalid company domain');
   }
 
-  // 3️⃣ Check duplicate company domain
+  // Check for duplicate company domain
   const existingCompany = await Company.findOne({ domain: company_domain });
+
   if (existingCompany) {
-    throw new ApiError(400, "Company already exists with this domain");
+    throw new ApiError(400, 'Company already exists with this domain');
   }
 
-  // 4️⃣ Check duplicate admin email
+  // Check for duplicate admin email
   const existingUser = await CompanyUser.findOne({ email });
+
   if (existingUser) {
-    throw new ApiError(400, "User already exists with this email");
+    throw new ApiError(400, 'User already exists with this email');
   }
 
-  // 5️⃣ Create company (customer company)
+  // Create customer company
   const company = await Company.create({
     name: company_name,
     domain: company_domain,
-    is_system: false, // 🔑 IMPORTANT
-    status: "active",
+    is_system: false,
+    status: 'active',
     owner_user_id: null,
-    plan_id: null, // assign later
+    plan_id: null,
   });
 
-  // 6️⃣ Create company admin
+  // Create company admin user
   const admin = await CompanyUser.create({
     company_id: company._id,
     username,
     email,
-    password_hash: password, // hashed by pre-save hook
-    role: "company_admin",
+    password_hash: password, // Hashed via pre-save hook
+    role: 'company_admin',
   });
 
-  // 7️⃣ Attach owner
+  // Assign company owner
   company.owner_user_id = admin._id;
   await company.save();
 
-  // 8️⃣ Response (safe)
+  // Send safe response
   return res.status(201).json(
     new ApiResponse(
       201,
@@ -86,8 +89,7 @@ export const create_company = AsyncHandler(async (req, res) => {
           role: admin.role,
         },
       },
-      "Company created successfully"
+      'Company created successfully'
     )
   );
 });
-

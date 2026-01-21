@@ -1,26 +1,31 @@
 import dotenv from 'dotenv';
-dotenv.config(); // ✅ load env FIRST
 import connectDB from './db/db.js';
 import app from './app.js';
 
+// Load environment variables before anything else
+dotenv.config();
+
+/**
+ * Initialize and Start Server
+ */
 const startServer = async () => {
   try {
-    // 1️⃣ Connect DB
+    // Connect to database
     await connectDB();
-    console.log('✅ Database connected');
+    console.log('Database connected successfully');
 
-    // 3️⃣ Handle express errors
+    // Handle Express application errors
     app.on('error', (error) => {
-      console.error('Error in Express app:', error.message);
+      console.error('Express application error:', error.message);
       throw error;
     });
 
-    // 4️⃣ Start server
+    // Start HTTP server
     app.listen(process.env.PORT, () => {
-      console.log(`🚀 Server running at :${process.env.PORT}`);
+      console.log(`Server is running on port ${process.env.PORT}`);
     });
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
+    console.error('Failed to start server:', error);
     process.exit(1);
   }
 };

@@ -1,13 +1,13 @@
 import { CompanyUser } from '../models/CompanyUser.model.js';
-import {Company} from "../models/Company.model.js"
+import { Company } from '../models/Company.model.js';
 import AsyncHandler from '../utils/AsyncHandler.util.js';
 import ApiError from '../utils/ApiError.util.js';
 import ApiResponse from '../utils/ApiResponse.util.js';
 import HTTP_STATUS from '../constants/httpStatusCodes.constant.js';
 
-// =========================
-// Generate Tokens
-// =========================
+/**
+ * Generate Access and Refresh Tokens
+ */
 export const generateTokens = async (user) => {
   if (!user) {
     throw new ApiError(
@@ -25,16 +25,18 @@ export const generateTokens = async (user) => {
   return { accessToken, refreshToken };
 };
 
-// =========================
-// Login Controller
-// =========================
+/**
+ * Login Controller
+ */
 export const login = AsyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
+  // Validate request payload
   if (!email || !password) {
     throw new ApiError(400, 'Email and password are required');
   }
 
+  // Retrieve user by email
   const user = await CompanyUser.findOne({
     email: email.toLowerCase(),
   });
@@ -43,15 +45,17 @@ export const login = AsyncHandler(async (req, res) => {
     throw new ApiError(401, 'Invalid email or password');
   }
 
+  // Validate password
   const isPasswordValid = await user.isPasswordCorrect(password);
 
   if (!isPasswordValid) {
     throw new ApiError(401, 'Invalid email or password');
   }
 
+  // Generate tokens
   const { accessToken, refreshToken } = await generateTokens(user);
 
-  // 🍪 Cookie options
+  // Configure secure cookies
   const cookieOptions = {
     httpOnly: true,
     secure: process.env.NODE_ENV !== 'development',
@@ -68,6 +72,7 @@ export const login = AsyncHandler(async (req, res) => {
       maxAge: Number(process.env.REFRESH_COOKIE_MAX_AGE),
     });
 
+  // Send response
   return res.status(200).json(
     new ApiResponse(
       200,
@@ -82,4 +87,3 @@ export const login = AsyncHandler(async (req, res) => {
     )
   );
 });
-

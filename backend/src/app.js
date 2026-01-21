@@ -1,24 +1,32 @@
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+
+import systemRouter from './routes/system.route.js';
+import authRouter from './routes/auth.route.js';
+import companyRouter from './routes/company.route.js';
+
 const app = express();
 
-// CORS middleware
+/**
+ * CORS Configuration
+ */
 app.use(
   cors({
     origin: process.env.CORS_ORIGIN,
-    credentials: true, // allow session cookie, headers from browser to pass through
+    credentials: true,
   })
 );
 
-// Body parser middleware
+/**
+ * Body Parsers
+ */
 app.use(
   express.json({
     limit: '16kb',
   })
 );
 
-// Form data parser middleware
 app.use(
   express.urlencoded({
     extended: true,
@@ -26,24 +34,21 @@ app.use(
   })
 );
 
-// give direct of public folder to express
+/**
+ * Static Files
+ */
 app.use(express.static('public'));
 
-// Parse cookies middleware
+/**
+ * Cookie Parser
+ */
 app.use(cookieParser());
 
-// Routers v1
-
-import systemRouter from './routes/system.route.js';
-import authRouter from './routes/auth.route.js';
-import  companyRouter from "./routes/company.route.js"
-
-// auth routes
+/**
+ * API Routes (v1)
+ */
 app.use('/api/v1/auth', authRouter);
-// system routes
 app.use('/api/v1/system', systemRouter);
-// company routes
-app.use('/api/v1/company',companyRouter);
+app.use('/api/v1/company', companyRouter);
 
-// export app
 export default app;
