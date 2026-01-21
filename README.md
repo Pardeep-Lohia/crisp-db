@@ -6,15 +6,11 @@ Crisp-DB is a full-stack application consisting of a React frontend and a Node.j
 
 ### Backend Features
 
-- **Company Management**: Create, view, and update company information, including status management and API key generation.
-- **Plan Management**: Handle subscription plans with CRUD operations, including plan features.
-- **Conversation Handling**: Manage conversations, messages, and visitor interactions.
-- **Knowledge Base**: Store and manage knowledge base entries for AI responses.
-- **User Management**: Handle company users and authentication.
-- **Token Usage Tracking**: Monitor and track API token usage.
-- **Authentication**: JWT-based authentication for secure access.
-- **Rate Limiting**: Middleware to prevent abuse.
-- **Error Handling**: Global error handling for robust API responses.
+- **Authentication**: JWT-based login for users.
+- **Company Management**: Create companies, send invites to employees, and accept invites.
+- **System Bootstrap**: Create super admin and super company for initial setup.
+- **Database Models**: Support for companies, users, conversations, messages, knowledge bases, plans, API keys, invites, token usage, and visitors (models defined, but not all routes implemented).
+- **Middleware**: Authentication, file upload, and bootstrap secret verification.
 - **CORS Support**: Cross-origin resource sharing enabled.
 - **File Uploads**: Support for image and file uploads via Multer and Cloudinary.
 
@@ -109,25 +105,21 @@ http://localhost:5000
 
 ## API Endpoints
 
-### Plans
+### Authentication
 
-- `GET /api/plans` - Get all plans
-- `POST /api/plans` - Create a new plan
-- `GET /api/plans/:id` - Get plan details by ID
+- `POST /api/v1/auth/login` - User login
 
-### Companies
+### Company
 
-- `POST /company/companies` - Create a new company (with admin user, plan, and API key)
-- `GET /company/companies` - View all companies with active plans
-- `PATCH /company/companies/:id/status` - Update company status (active, inactive, blocked)
+- `POST /api/v1/company/create-company` - Create a new company
+- `POST /api/v1/company/send-invite` - Send invite to employee (requires authentication)
+- `POST /api/v1/company/accept-invite` - Accept invite and signup
 
-### Conversations
+### System (Bootstrap)
 
-- Endpoints for managing conversations, messages, and visitor interactions (implementation in progress).
-
-### Super Admin
-
-- Administrative endpoints for system management.
+- `POST /api/v1/system/create-super-company` - Create super company (requires bootstrap secret)
+- `POST /api/v1/system/create-super-admin` - Create super admin (requires bootstrap secret)
+- `DELETE /api/v1/system/delete-super-admin` - Delete super admin (requires bootstrap secret)
 
 ## Project Structure
 
@@ -138,22 +130,27 @@ crisp-db/
 │   │   ├── config/            # Configuration files
 │   │   ├── constants/         # Application constants
 │   │   ├── controllers/       # Route controllers
-│   │   │   ├── company.controller.js
-│   │   │   ├── conversation.controller.js
-│   │   │   ├── knowledgeBase.controller.js
-│   │   │   ├── plan.controller.js
-│   │   │   └── superAdmin.controller.js
+│   │   │   ├── auth.controller.js
+│   │   │   ├── bootstrap/
+│   │   │   │   ├── superAdmin.service.js
+│   │   │   │   └── SuperCompany.service.js
+│   │   │   ├── Company/
+│   │   │   │   └── create_company.controller.js
+│   │   │   └── invite/
+│   │   │       ├── acceptInvite.controller.js
+│   │   │       └── inviteEmployee.controller.js
 │   │   ├── db/                # Database connection
 │   │   │   └── db.js
 │   │   ├── middlewares/       # Custom middlewares
-│   │   │   ├── auth.middleware.js
-│   │   │   ├── error.middleware.js
-│   │   │   └── rateLimiter.middleware.js
+│   │   │   ├── Auth.middleware.js
+│   │   │   ├── uploadFile.middleware.js
+│   │   │   └── verifyBootstrapSecret.middleware.js
 │   │   ├── models/            # Mongoose models
 │   │   │   ├── ApiKey.model.js
 │   │   │   ├── Company.model.js
 │   │   │   ├── CompanyUser.model.js
 │   │   │   ├── Conversation.model.js
+│   │   │   ├── Invite.model.js
 │   │   │   ├── KnowledgeBase.model.js
 │   │   │   ├── Message.model.js
 │   │   │   ├── Plan.model.js
@@ -161,14 +158,17 @@ crisp-db/
 │   │   │   ├── TokenUsage.model.js
 │   │   │   └── Visitors.model.js
 │   │   ├── routes/            # API routes
+│   │   │   ├── auth.route.js
 │   │   │   ├── company.route.js
-│   │   │   ├── conversation.route.js
-│   │   │   ├── plan.routes.js
-│   │   │   └── superadmin.route.js
+│   │   │   └── system.route.js
+│   │   ├── utils/             # Utility functions
+│   │   │   ├── ApiError.util.js
+│   │   │   ├── ApiResponse.util.js
+│   │   │   ├── AsyncHandler.util.js
+│   │   │   └── Cloudinary.util.js
 │   │   ├── app.js            # Express app setup
 │   │   └── index.js          # Main entry point
 │   ├── public/               # Static files
-│   ├── .env                  # Environment variables
 │   ├── .gitignore
 │   ├── .prettierignore
 │   ├── .prettierrc
