@@ -8,11 +8,11 @@ import AsyncHandler from '../../utils/AsyncHandler.util.js';
  * Accept Invite and Sign Up Employee
  */
 export const acceptInviteAndSignup = AsyncHandler(async (req, res) => {
-  const { token, username, password } = req.body;
+  const { token, username, password , phone_number } = req.body;
 
   // Validate request payload
-  if (!token || !username || !password) {
-    throw new ApiError(400, 'Token, username, and password are required');
+  if (!token || !username || !password || !phone_number) {
+    throw new ApiError(400, 'Token, username, password and phone number are required');
   }
 
   // Retrieve valid invite
@@ -41,6 +41,7 @@ export const acceptInviteAndSignup = AsyncHandler(async (req, res) => {
     email: invite.email,
     password_hash: password, // Hashed via pre-save hook
     role: invite.role,
+    phone_number
   });
 
   // Mark invite as used
@@ -56,6 +57,7 @@ export const acceptInviteAndSignup = AsyncHandler(async (req, res) => {
         username: employee.username,
         email: employee.email,
         role: employee.role,
+        phone_number : employee.phone_number
       },
       'Employee onboarded successfully'
     )

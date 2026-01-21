@@ -80,8 +80,9 @@ export const login = AsyncHandler(async (req, res) => {
         _id: user._id,
         username: user.username,
         email: user.email,
+        phone_number : user.phone_number,
         role: user.role,
-        company_id: user.company_id,
+        company_id: user.company_id
       },
       'Login successful'
     )

@@ -11,11 +11,35 @@ const companyUserSchema = new mongoose.Schema(
       index: true,
     },
 
-    username: { type: String, required: true },
+    username: {
+      type: String,
+      required: true,
+      trim: true,
+    },
 
-    email: { type: String, required: true },
+    email: {
+      type: String,
+      required: true,
+      lowercase: true,
+      trim: true,
+    },
 
-    password_hash: { type: String, required: true },
+    password_hash: {
+      type: String,
+      required: true,
+    },
+
+    phone_number :{
+      country_code : {
+        required : true,
+        type : String
+      },
+      number : {
+        type : String , 
+        required : true , 
+        unique : true
+      }
+    },
 
     role: {
       type: String,
@@ -23,17 +47,33 @@ const companyUserSchema = new mongoose.Schema(
       required: true,
     },
 
-    is_online: { type: Boolean, default: false },
+    is_online: {
+      type: Boolean,
+      default: false,
+    },
 
-    refresh_token: { type: String, default: null },
+    refresh_token: {
+      type: String,
+      default: null,
+    },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
-// 🔑 Multi-tenant uniqueness
-companyUserSchema.index({ company_id: 1, email: 1 }, { unique: true });
+/**
+ * Multi-tenant uniqueness
+ * A user email must be unique per company
+ */
+companyUserSchema.index(
+  { company_id: 1, email: 1 },
+  { unique: true }
+);
 
-// 🔐 Only ONE super_admin per company
+/**
+ * Ensure only one super_admin per company
+ */
 companyUserSchema.index(
   { company_id: 1, role: 1 },
   {
@@ -42,30 +82,57 @@ companyUserSchema.index(
   }
 );
 
-// 🔒 Password hashing
+/**
+ * Hash password before saving
+ */
 companyUserSchema.pre('save', async function (next) {
-  if (!this.isModified('password_hash')) return next();
+  if (!this.isModified('password_hash')) {
+    return next();
+  }
+
   this.password_hash = await bcrypt.hash(this.password_hash, 10);
   next();
 });
 
-// 🔐 Auth helpers
+/**
+ * Validate password
+ */
 companyUserSchema.methods.isPasswordCorrect = function (password) {
   return bcrypt.compare(password, this.password_hash);
 };
 
+/**
+ * Generate access token
+ */
 companyUserSchema.methods.generateAccessToken = function () {
   return jwt.sign(
-    { _id: this._id, company_id: this.company_id, role: this.role },
-    process.env.ACCESS_SECRET_KEY,
-    { expiresIn: process.env.ACCESS_TOKEN_EXPIRY }
+    {
+      _id: this._id,
+      company_id: this.company_id,
+      role: this.role,
+      email: this.email,
+    },
+    process.env.ACCESS_TOKEN_SECRET,
+    {
+      expiresIn: process.env.ACCESS_TOKEN_EXPIRY,
+    }
   );
 };
 
+/**
+ * Generate refresh token
+ */
 companyUserSchema.methods.generateRefreshToken = function () {
-  return jwt.sign({ _id: this._id }, process.env.REFRESH_SECRET_KEY, {
-    expiresIn: process.env.REFRESH_TOKEN_EXPIRY,
-  });
+  return jwt.sign(
+    { _id: this._id },
+    process.env.REFRESH_TOKEN_SECRET,
+    {
+      expiresIn: process.env.REFRESH_TOKEN_EXPIRY,
+    }
+  );
 };
 
-export const CompanyUser = mongoose.model('CompanyUser', companyUserSchema);
+export const CompanyUser = mongoose.model(
+  'CompanyUser',
+  companyUserSchema
+);

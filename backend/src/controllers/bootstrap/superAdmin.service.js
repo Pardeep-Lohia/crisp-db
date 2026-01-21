@@ -9,11 +9,11 @@ import AsyncHandler from '../../utils/AsyncHandler.util.js';
  * Scope: Provider (System) Company Only
  */
 export const createSuperAdmin = AsyncHandler(async (req, res) => {
-  const { username, email, password } = req.body;
+  const { username, email, password , phone_number } = req.body;
 
   // Validate request payload
-  if (!username || !email || !password) {
-    throw new ApiError(400, 'Username, email, and password are required');
+  if (!username || !email || !password  || !phone_number) {
+    throw new ApiError(400, 'Username, email, password and phone number are required');
   }
 
   // Fetch provider (system) company
@@ -39,6 +39,7 @@ export const createSuperAdmin = AsyncHandler(async (req, res) => {
     username,
     email,
     password_hash: password, // Password is hashed via pre-save hook
+    phone_number,
     role: 'super_admin',
   });
 
@@ -57,6 +58,7 @@ export const createSuperAdmin = AsyncHandler(async (req, res) => {
         username: superAdmin.username,
         email: superAdmin.email,
         role: superAdmin.role,
+        phone_number : superAdmin.phone_number
       },
       'Super admin created successfully'
     )
