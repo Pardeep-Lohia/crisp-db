@@ -15,7 +15,7 @@ const planSchema = new mongoose.Schema(
       required: true,
     },
 
-    duration_days: Number,
+    duration: Number,
 
     is_active: { type: Boolean, default: true },
   },
@@ -23,3 +23,4 @@ const planSchema = new mongoose.Schema(
 );
 
 export const Plan = mongoose.model('Plan', planSchema);
+

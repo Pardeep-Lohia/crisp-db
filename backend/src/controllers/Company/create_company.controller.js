@@ -1,3 +1,5 @@
+import crypto from 'crypto';
+
 import { CompanyUser } from '../../models/CompanyUser.model.js';
 import { Company } from '../../models/Company.model.js';
 import { Plan } from '../../models/Plan.model.js';
@@ -11,15 +13,8 @@ import ApiResponse from '../../utils/ApiResponse.util.js';
  * Automatically creates a company and assigns a company admin
  */
 export const createCompany = AsyncHandler(async (req, res) => {
-  const {
-    company_name,
-    company_domain,
-    username,
-    email,
-    password,
-    phone_number,
-    plan_id,
-  } = req.body;
+  const { company_name, company_domain, username, email, password, phone_number, plan_id } =
+    req.body;
 
   // Validate input
   if (
@@ -86,13 +81,30 @@ export const createCompany = AsyncHandler(async (req, res) => {
   company.owner_user_id = admin._id;
   await company.save();
 
-  // Generate API key (one-time reveal)
-  const apiKey = crypto.randomBytes(32).toString('hex');
+  // =========================
+  // API KEY CREATION (FIXED)
+  // =========================
+
+  const rawApiKey = crypto.randomBytes(32).toString('hex');
+
+  // Calculate start & expiry based on plan
+
+  const start_at = new Date();
+  let expires_at = new Date(start_at);
+
+  if (plan.billing_cycle === 'monthly') {
+    // duration = number of months
+    expires_at.setMonth(expires_at.getMonth() + plan.duration);
+  } else if (plan.billing_cycle === 'yearly') {
+    // duration = number of years
+    expires_at.setFullYear(expires_at.getFullYear() + plan.duration);
+  }
 
   await ApiKey.create({
     company_id: company._id,
-    key: apiKey,
-    name: 'Primary API Key',
+    api_key_hash: rawApiKey, // ⚠️ hashing later
+    start_at,
+    expires_at,
   });
 
   // Response
@@ -111,7 +123,7 @@ export const createCompany = AsyncHandler(async (req, res) => {
           description: plan.description,
           price: plan.price,
           billing_cycle: plan.billing_cycle,
-          duration_days: plan.duration_days,
+          duration: plan.duration,
         },
         admin: {
           _id: admin._id,
@@ -120,7 +132,8 @@ export const createCompany = AsyncHandler(async (req, res) => {
           role: admin.role,
           phone_number: admin.phone_number,
         },
-        api_key: apiKey,
+        api_key: rawApiKey,
+        api_key_expires_at: expires_at,
         note: 'Save this API key securely. It will not be shown again.',
       },
       'Company created successfully'

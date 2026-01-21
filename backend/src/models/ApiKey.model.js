@@ -8,13 +8,26 @@ const apiKeySchema = new mongoose.Schema(
       required: true,
     },
 
-    api_key: { type: String, required: true, unique: true },
+    api_key_hash: {
+      type: String,
+      required: true,
+      unique: true,
+    },
 
-    is_active: { type: Boolean, default: true },
+    start_at:{
+      type:Date,
+      default:null,
+    },
+    
+    expires_at: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
 );
 
+// Only ONE active key per company
 apiKeySchema.index(
   { company_id: 1 },
   { unique: true, partialFilterExpression: { is_active: true } }

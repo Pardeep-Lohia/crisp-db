@@ -1,5 +1,4 @@
 import { CompanyUser } from '../models/CompanyUser.model.js';
-import { Company } from '../models/Company.model.js';
 import AsyncHandler from '../utils/AsyncHandler.util.js';
 import ApiError from '../utils/ApiError.util.js';
 import ApiResponse from '../utils/ApiResponse.util.js';
@@ -33,7 +32,10 @@ export const login = AsyncHandler(async (req, res) => {
 
   // Validate request payload
   if (!email || !password) {
-    throw new ApiError(400, 'Email and password are required');
+    throw new ApiError(
+      HTTP_STATUS.BAD_REQUEST,
+      'Email and password are required'
+    );
   }
 
   // Retrieve user by email
@@ -42,24 +44,31 @@ export const login = AsyncHandler(async (req, res) => {
   });
 
   if (!user) {
-    throw new ApiError(401, 'Invalid email or password');
+    throw new ApiError(
+      HTTP_STATUS.UNAUTHORIZED,
+      'Invalid email or password'
+    );
   }
 
   // Validate password
   const isPasswordValid = await user.isPasswordCorrect(password);
-
   if (!isPasswordValid) {
-    throw new ApiError(401, 'Invalid email or password');
+    throw new ApiError(
+      HTTP_STATUS.UNAUTHORIZED,
+      'Invalid email or password'
+    );
   }
 
   // Generate tokens
   const { accessToken, refreshToken } = await generateTokens(user);
 
-  // Configure secure cookies
+  /**
+   * ✅ COOKIE OPTIONS (POSTMAN + DEV SAFE)
+   */
   const cookieOptions = {
     httpOnly: true,
-    secure: process.env.NODE_ENV !== 'development',
-    sameSite: 'none',
+    secure: false,      // ❗ MUST be false for Postman / HTTP
+    sameSite: 'lax',    // ❗ 'none' breaks cookies without HTTPS
   };
 
   res
@@ -72,17 +81,17 @@ export const login = AsyncHandler(async (req, res) => {
       maxAge: Number(process.env.REFRESH_COOKIE_MAX_AGE),
     });
 
-  // Send response
-  return res.status(200).json(
+  // Response
+  return res.status(HTTP_STATUS.OK).json(
     new ApiResponse(
-      200,
+      HTTP_STATUS.OK,
       {
         _id: user._id,
         username: user.username,
         email: user.email,
-        phone_number : user.phone_number,
+        phone_number: user.phone_number,
         role: user.role,
-        company_id: user.company_id
+        company_id: user.company_id,
       },
       'Login successful'
     )

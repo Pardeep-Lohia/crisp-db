@@ -60,7 +60,7 @@ export const inviteEmployeeFromSameCompany = AsyncHandler(async (req, res) => {
   });
 
   // Generate frontend invite link
-  const inviteLink = `${process.env.FRONTEND_URL}/accept-invite?token=${token}`;
+  const inviteLink = `${process.env.FRONTEND_URL}/api/v1/company/accept-invite?token=${token}`;
 
   return res.status(201).json(new ApiResponse(201, { inviteLink }, `Invite sent successfully by ${senderEmail}`));
 });

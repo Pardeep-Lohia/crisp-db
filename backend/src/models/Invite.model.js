@@ -15,7 +15,7 @@ const inviteSchema = new mongoose.Schema(
 
     role: {
       type: String,
-      enum: ["company_agent","admin"],
+      enum: ["company_agent","company_admin"],
       default: "company_agent",
     },
 

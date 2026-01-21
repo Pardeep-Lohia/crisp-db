@@ -8,7 +8,8 @@ import AsyncHandler from '../../utils/AsyncHandler.util.js';
  * Accept Invite and Sign Up Employee
  */
 export const acceptInviteAndSignup = AsyncHandler(async (req, res) => {
-  const { token, username, password , phone_number } = req.body;
+  const token=req.query.token;
+  const {username, password , phone_number } = req.body;
 
   // Validate request payload
   if (!token || !username || !password || !phone_number) {
