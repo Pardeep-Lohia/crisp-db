@@ -10,7 +10,7 @@ import AsyncHandler from '../../utils/AsyncHandler.util.js';
  * Allowed roles: super_admin, company_admin
  */
 export const inviteEmployeeFromSameCompany = AsyncHandler(async (req, res) => {
-  const { email } = req.body;
+  const { email, role } = req.body;
 
   // Validate request payload
   if (!email) {
@@ -55,17 +55,11 @@ export const inviteEmployeeFromSameCompany = AsyncHandler(async (req, res) => {
     company_id: companyId,
     token,
     expiresAt,
-    role: 'company_agent',
+    role: role,
   });
 
   // Generate frontend invite link
   const inviteLink = `${process.env.FRONTEND_URL}/accept-invite?token=${token}`;
 
-  return res.status(201).json(
-    new ApiResponse(
-      201,
-      { inviteLink },
-      'Invite sent successfully'
-    )
-  );
+  return res.status(201).json(new ApiResponse(201, { inviteLink }, 'Invite sent successfully'));
 });

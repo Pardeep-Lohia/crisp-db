@@ -6,19 +6,19 @@ import AsyncHandler from '../utils/AsyncHandler.util.js';
 export const authenticate = AsyncHandler(async (req, res, next) => {
   let token;
 
-  // 1️⃣ Get token from header OR cookie
+  // Get token from header OR cookie
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
     token = req.headers.authorization.split(' ')[1];
   } else if (req.cookies?.accessToken) {
     token = req.cookies.accessToken;
   }
 
-  // 2️⃣ Token missing
+  // Token missing
   if (!token) {
     throw new ApiError(401, 'Access token missing or invalid');
   }
 
-  // 3️⃣ Verify token
+  // Verify token
   let decoded;
   try {
     decoded = jwt.verify(token, process.env.ACCESS_SECRET_KEY);
@@ -26,16 +26,16 @@ export const authenticate = AsyncHandler(async (req, res, next) => {
     throw new ApiError(401, 'Invalid or expired access token');
   }
 
-  // 4️⃣ Get user from DB
+  // Get user from DB
   const user = await CompanyUser.findById(decoded._id).select('-password_hash -refresh_token');
 
   if (!user) {
     throw new ApiError(401, 'User not found');
   }
 
-  // 5️⃣ Attach user to request
+  // Attach user to request
   req.user = user;
 
-  // 6️⃣ Continue
+  // Continue
   next();
 });
