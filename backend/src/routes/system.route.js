@@ -6,10 +6,9 @@ import {
 } from '../controllers/bootstrap/superAdmin.service.js';
 
 import { createSuperCompany } from '../controllers/bootstrap/SuperCompany.service.js';
-
 import { verifyBootstrapSecret } from '../middlewares/verifyBootstrapSecret.middleware.js';
 import { authenticate } from '../middlewares/Auth.middleware.js';
-
+import { getAllActiveCompanies } from '../controllers/SuperAdmin/ChildCompany.controller.js';
 import {
   createPlan,
   updatePlan,
@@ -19,84 +18,55 @@ import {
   getPlanById,
 } from '../controllers/SuperAdmin/Plan.controller.js';
 
-/**
- * System Bootstrap Routes
- */
+// Create system router
 const systemRouter = express.Router();
 
-/**
- * =========================
- * BOOTSTRAP ROUTES
- * =========================
- */
+// Bootstrap routes (run once)
 
-// Create Provider (System) Company (run once)
+// Create system provider company
 systemRouter.post(
   '/create-super-company',
   verifyBootstrapSecret,
   createSuperCompany
 );
 
-// Create Super Admin
+// Create super admin
 systemRouter.post(
   '/create-super-admin',
   verifyBootstrapSecret,
   createSuperAdmin
 );
 
-// Delete Super Admin (dangerous)
+// Delete super admin (dangerous)
 systemRouter.delete(
   '/delete-super-admin',
   verifyBootstrapSecret,
   deleteSuperAdmin
 );
 
-/**
- * =========================
- * PLAN MANAGEMENT (SuperAdmin)
- * =========================
- */
+// Plan management routes (Super Admin)
 
 // Create new plan
-systemRouter.post(
-  '/plans',
-  authenticate,
-  createPlan
-);
+systemRouter.post('/plans', authenticate, createPlan);
 
-// Update plan
-systemRouter.put(
-  '/plans/:planId',
-  authenticate,
-  updatePlan
-);
+// Update existing plan
+systemRouter.put('/plans/:planId', authenticate, updatePlan);
 
-// Deactivate plan
-systemRouter.patch(
-  '/plans/:planId/deactivate',
-  authenticate,
-  deactivatePlan
-);
+// Deactivate a plan
+systemRouter.patch('/plans/:planId/deactivate', authenticate, deactivatePlan);
 
-// Delete plan (only if unused)
-systemRouter.delete(
-  '/plans/:planId',
-  authenticate,
-  deletePlan
-);
+// Delete plan (only if not in use)
+systemRouter.delete('/plans/:planId', authenticate, deletePlan);
 
-// Get all active plans (for signup / users)
-systemRouter.get(
-  '/plans/active',
-  authenticate,
-  getActivePlans
-);
+// Get all active plans
+systemRouter.get('/plans/active', authenticate, getActivePlans);
 
 // Get plan by id (query param: ?id=)
-systemRouter.get(
-  '/plans/by-id',
-  authenticate,
-  getPlanById
-);
+systemRouter.get('/plans/by-id', getPlanById);
+
+// Child company routes
+
+// View all active companies
+systemRouter.get('/view-all-companies', authenticate, getAllActiveCompanies);
 
 export default systemRouter;

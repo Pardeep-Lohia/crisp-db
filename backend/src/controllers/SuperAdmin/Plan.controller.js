@@ -5,12 +5,20 @@ import ApiError from '../../utils/ApiError.util.js';
 import ApiResponse from '../../utils/ApiResponse.util.js';
 import HTTP_STATUS from '../../constants/httpStatusCodes.constant.js';
 
+// Check the presence of Super_admin
+const requireSuperAdmin = (req) => {
+  if (!req.user || req.user.role !== 'Super_admin') {
+    throw new ApiError(HTTP_STATUS.FORBIDDEN, 'Only Super_admin can access this resource');
+  }
+};
+
 /**
  * =========================
- * CREATE PLAN
+ * CREATE PLAN only by super admin
  * =========================
  */
 export const createPlan = AsyncHandler(async (req, res) => {
+  requireSuperAdmin(req);
   const { name, description, price, billing_cycle, duration } = req.body;
 
   const isPlanPresent = await Plan.findOne({ name });
@@ -27,24 +35,21 @@ export const createPlan = AsyncHandler(async (req, res) => {
     is_active: true,
   });
 
-  return res.status(HTTP_STATUS.CREATED).json(
-    new ApiResponse(
-      HTTP_STATUS.CREATED,
-      newPlan,
-      'Your plan was created successfully'
-    )
-  );
+  return res
+    .status(HTTP_STATUS.CREATED)
+    .json(new ApiResponse(HTTP_STATUS.CREATED, newPlan, 'Your plan was created successfully'));
 });
 
 /**
  * =========================
- * UPDATE PLAN
+ * UPDATE PLAN by super admin
  * Rules:
  * - If plan NOT used → normal update
  * - If plan IS used + critical update → deprecate + create new version
  * =========================
  */
 export const updatePlan = AsyncHandler(async (req, res) => {
+  requireSuperAdmin(req);
   const { planId } = req.params;
   const updates = req.body;
 
@@ -55,9 +60,7 @@ export const updatePlan = AsyncHandler(async (req, res) => {
 
   const companyCount = await Company.countDocuments({ plan_id: planId });
 
-  const isCriticalUpdate =
-    updates.price !== undefined ||
-    updates.billing_cycle !== undefined;
+  const isCriticalUpdate = updates.price !== undefined || updates.billing_cycle !== undefined;
 
   /**
    * CASE 1: Plan in use + critical update
@@ -107,34 +110,24 @@ export const updatePlan = AsyncHandler(async (req, res) => {
   /**
    * CASE 2: Safe update
    */
-  const updatedPlan = await Plan.findByIdAndUpdate(
-    planId,
-    updates,
-    { new: true, runValidators: true }
-  );
+  const updatedPlan = await Plan.findByIdAndUpdate(planId, updates, {
+    new: true,
+    runValidators: true,
+  });
 
-  return res.json(
-    new ApiResponse(
-      HTTP_STATUS.OK,
-      updatedPlan,
-      'Plan updated successfully'
-    )
-  );
+  return res.json(new ApiResponse(HTTP_STATUS.OK, updatedPlan, 'Plan updated successfully'));
 });
 
 /**
  * =========================
- * DEACTIVATE PLAN
+ * DEACTIVATE PLAN by super admin
  * =========================
  */
 export const deactivatePlan = AsyncHandler(async (req, res) => {
+  requireSuperAdmin(req);
   const { planId } = req.params;
 
-  const plan = await Plan.findByIdAndUpdate(
-    planId,
-    { is_active: false },
-    { new: true }
-  );
+  const plan = await Plan.findByIdAndUpdate(planId, { is_active: false }, { new: true });
 
   if (!plan) {
     throw new ApiError(HTTP_STATUS.NOT_FOUND, 'Plan not found');
@@ -151,10 +144,11 @@ export const deactivatePlan = AsyncHandler(async (req, res) => {
 
 /**
  * =========================
- * DELETE PLAN (SAFE CLEANUP)
+ * DELETE PLAN (SAFE CLEANUP) by super admin
  * =========================
  */
 export const deletePlan = AsyncHandler(async (req, res) => {
+  requireSuperAdmin(req);
   const { planId } = req.params;
 
   const companyCount = await Company.countDocuments({ plan_id: planId });
@@ -170,18 +164,12 @@ export const deletePlan = AsyncHandler(async (req, res) => {
     throw new ApiError(HTTP_STATUS.NOT_FOUND, 'Plan not found');
   }
 
-  return res.json(
-    new ApiResponse(
-      HTTP_STATUS.OK,
-      null,
-      'Plan deleted successfully'
-    )
-  );
+  return res.json(new ApiResponse(HTTP_STATUS.OK, null, 'Plan deleted successfully'));
 });
 
 /**
  * =========================
- * AUTO CLEANUP DEPRECATED PLANS
+ * AUTO CLEANUP DEPRECATED PLANS auto clean
  * =========================
  */
 export const cleanupDeprecatedPlans = async () => {
@@ -205,49 +193,45 @@ export const cleanupDeprecatedPlans = async () => {
 
 /**
  * =========================
- * READ ACTIVE PLANS (FOR USERS)
+ * READ ACTIVE PLANS (FOR USERS) by super admin and Company admin 
  * =========================
  */
 export const getActivePlans = AsyncHandler(async (req, res) => {
-  const plans = await Plan.find({ is_active: true })
-    .sort({ createdAt: -1 });
+  let plans;
+
+  if (req.user?.role === 'Super_admin') {
+    // Super admin sees all plans
+    plans = await Plan.find().sort({ createdAt: -1 });
+  } else {
+    // Normal users see only active plans
+    plans = await Plan.find({ is_active: true }).sort({ createdAt: -1 });
+  }
 
   return res.json(
     new ApiResponse(
       HTTP_STATUS.OK,
       plans,
-      'Active plans fetched successfully'
+      'Plans fetched successfully'
     )
   );
-})  
+});
+
 
 // ========================
-//  PLANS BY ID
+//  PLANS BY ID by super admin and Company admin
 // ========================
 export const getPlanById = AsyncHandler(async (req, res) => {
   const { id } = req.query;
 
   if (!id) {
-    throw new ApiError(
-      HTTP_STATUS.BAD_REQUEST,
-      'Plan id is required'
-    );
+    throw new ApiError(HTTP_STATUS.BAD_REQUEST, 'Plan id is required');
   }
 
   const plan = await Plan.findById(id);
 
   if (!plan) {
-    throw new ApiError(
-      HTTP_STATUS.NOT_FOUND,
-      'Plan not found'
-    );
+    throw new ApiError(HTTP_STATUS.NOT_FOUND, 'Plan not found');
   }
 
-  return res.json(
-    new ApiResponse(
-      HTTP_STATUS.OK,
-      plan,
-      'Plan fetched successfully'
-    )
-  );
+  return res.json(new ApiResponse(HTTP_STATUS.OK, plan, 'Plan fetched successfully'));
 });
